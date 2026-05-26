@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI SRE Investigator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; font-size: 14px; background: #fff; color: #111; padding: 24px; }
+  h1 { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
+  .tagline { color: #555; margin-bottom: 24px; font-size: 13px; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  input { border: 1px solid #aaa; padding: 8px 10px; font-family: monospace; font-size: 14px; width: 200px; }
+  button { background: #111; color: #fff; border: none; padding: 8px 20px; cursor: pointer; font-family: monospace; font-size: 14px; }
+  button:disabled { background: #888; cursor: not-allowed; }
+  .status { font-size: 13px; color: #555; margin-bottom: 16px; min-height: 20px; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 10px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 6px 8px; background: #f0f0f0; border: 1px solid #ddd; font-weight: bold; }
+  td { padding: 6px 8px; border: 1px solid #ddd; vertical-align: top; word-break: break-word; max-width: 400px; }
+  tr:nth-child(even) { background: #fafafa; }
+  .empty { color: #888; font-size: 13px; padding: 8px 0; }
+  .summary-box { background: #f4f4f4; border: 1px solid #ccc; padding: 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.7; }
+  .badge { display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: bold; }
+  .badge-error { background: #fee; color: #c00; border: 1px solid #c00; }
+  .badge-warning { background: #fff8e1; color: #a00; border: 1px solid #e0a000; }
+  .badge-info { background: #e8f4fd; color: #036; border: 1px solid #036; }
+  .badge-ok { background: #e8fee8; color: #050; border: 1px solid #050; }
+  .coral-credit { margin-top: 40px; color: #aaa; font-size: 12px; border-top: 1px solid #eee; padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>AI SRE Investigator</h1>
+<p class="tagline">Powered by Coral — query GitHub + Sentry + Slack as SQL. No ETL. No glue code.</p>
+
+<div class="form-row">
+  <input id="owner" type="text" placeholder="GitHub owner" value="sudesh856" />
+  <input id="repo" type="text" placeholder="GitHub repo" value="sudesh856" />
+  <button id="btn" onclick="runInvestigation()">Investigate</button>
+</div>
+
+<div class="status" id="status">Enter a GitHub owner and repo name, then click Investigate.</div>
+
+<div id="results" style="display:none">
+
+  <div class="section">
+    <div class="section-title">ROOT CAUSE SUMMARY</div>
+    <div class="summary-box" id="summary"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">RECENT PULL REQUESTS (GitHub)</div>
+    <div id="prs"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">ACTIVE ERRORS (Sentry)</div>
+    <div id="errors"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">SLACK WORKSPACE CHANNELS</div>
+    <div id="slack"></div>
+  </div>
+
+  <div class="coral-credit">
+    Queries executed by Coral — one SQL interface over GitHub, Sentry, and Slack.
+    Built for Pirates of the Coral-bean hackathon by WeMakeDevs.
+  </div>
+
+</div>
+
+<script>
+async function runInvestigation() {
+  const owner = document.getElementById('owner').value.trim();
+  const repo = document.getElementById('repo').value.trim();
+  const btn = document.getElementById('btn');
+  const status = document.getElementById('status');
+  const results = document.getElementById('results');
+
+  if (!owner || !repo) {
+    status.textContent = 'Error: owner and repo are required.';
+    return;
+  }
+
+  btn.disabled = true;
+  results.style.display = 'none';
+  status.textContent = 'Running Coral SQL queries across GitHub, Sentry, and Slack...';
+
+  try {
+    const res = await fetch('/api/investigate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner, repo })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      status.textContent = 'Error: ' + data.error;
+      btn.disabled = false;
+      return;
+    }
+
+    document.getElementById('summary').textContent = data.summary || 'No summary generated.';
+
+    // PRs table
+    const prsEl = document.getElementById('prs');
+    if (!data.recent_prs || data.recent_prs.length === 0) {
+      prsEl.innerHTML = '<div class="empty">No recent pull requests found.</div>';
+    } else {
+      let html = '<table><tr><th>#</th><th>Title</th><th>Author</th><th>State</th><th>Merged At</th></tr>';
+      for (const pr of data.recent_prs) {
+        html += `<tr><td>${esc(pr.number)}</td><td>${esc(pr.title)}</td><td>${esc(pr.author)}</td><td>${esc(pr.state)}</td><td>${esc(pr.merged_at)}</td></tr>`;
+      }
+      html += '</table>';
+      prsEl.innerHTML = html;
+    }
+
+    // Sentry errors table
+    const errorsEl = document.getElementById('errors');
+    if (!data.sentry_errors || data.sentry_errors.length === 0) {
+      errorsEl.innerHTML = '<div class="empty">No unresolved Sentry errors found. System looks clean.</div>';
+    } else {
+      let html = '<table><tr><th>Level</th><th>Title</th><th>Status</th><th>First Seen</th></tr>';
+      for (const e of data.sentry_errors) {
+        const lvl = (e.level || '').toLowerCase();
+        let badgeClass = 'badge-info';
+        if (lvl === 'error' || lvl === 'fatal') badgeClass = 'badge-error';
+        else if (lvl === 'warning') badgeClass = 'badge-warning';
+        html += `<tr><td><span class="badge ${badgeClass}">${esc(e.level)}</span></td><td>${esc(e.title)}</td><td>${esc(e.status)}</td><td>${esc(e.first_seen)}</td></tr>`;
+      }
+      html += '</table>';
+      errorsEl.innerHTML = html;
+    }
+
+    // Slack channels table
+    const slackEl = document.getElementById('slack');
+    if (!data.slack_alerts || data.slack_alerts.length === 0) {
+      slackEl.innerHTML = '<div class="empty">No Slack channels found.</div>';
+    } else {
+      let html = '<table><tr><th>Channel</th><th>Purpose</th><th>Members</th></tr>';
+      for (const s of data.slack_alerts) {
+        const text = (s.text || '').length > 200 ? s.text.slice(0, 200) + '...' : (s.text || '');
+        html += `<tr><td>#${esc(s.channel)}</td><td>${esc(text)}</td><td>${esc(s.time)}</td></tr>`;
+      }
+      html += '</table>';
+      slackEl.innerHTML = html;
+    }
+
+    status.textContent = `Investigation complete — ${new Date().toLocaleTimeString()}`;
+    results.style.display = 'block';
+
+  } catch (err) {
+    status.textContent = 'Network error: Is the Go server running? Run: go run main.go';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
