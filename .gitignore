@@ -1,3 +1,10 @@
 *.exe
 *.test
 sre-agent.exe
+
+# secrets / config
+tokens.txt
+.env
+*.env
+*.key
+*.log
