@@ -1,6 +1,6 @@
 # AI SRE Investigator
 
-Powered by [Coral](https://withcoral.com) — one SQL interface over GitHub, Sentry, and Slack.
+Powered by [Coral](https://withcoral.com) - one SQL interface over GitHub, Sentry, and Slack.
 
 ## What it does
 

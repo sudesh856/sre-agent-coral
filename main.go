@@ -210,7 +210,7 @@ func buildSummary(r InvestigationResult) string {
 			limit = len(r.RecentPRs)
 		}
 		for _, pr := range r.RecentPRs[:limit] {
-			sb.WriteString(fmt.Sprintf("  PR #%s — %s (by %s, merged %s)\n", pr.Number, pr.Title, pr.Author, pr.MergedAt))
+			sb.WriteString(fmt.Sprintf("  PR #%s - %s (by %s, merged %s)\n", pr.Number, pr.Title, pr.Author, pr.MergedAt))
 		}
 	}
 
