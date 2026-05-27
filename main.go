@@ -226,7 +226,7 @@ func buildSummary(r InvestigationResult) string {
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("\nSLACK WORKSPACE: Found %d channels.\n", len(r.SlackAlerts)))
+	sb.WriteString(fmt.Sprintf("\nSLACK OPERATIONAL INTELLIGENCE: Found %d channels.\n", len(r.SlackAlerts)))
 	if len(r.SlackAlerts) > 0 {
 		limit := 3
 		if len(r.SlackAlerts) < limit {

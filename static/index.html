@@ -27,23 +27,24 @@
   .badge-warning { background: #fff8e1; color: #a00; border: 1px solid #e0a000; }
   .badge-info { background: #e8f4fd; color: #036; border: 1px solid #036; }
   .badge-ok { background: #e8fee8; color: #050; border: 1px solid #050; }
+  .badge-ops { background: #fff3e0; color: #b45000; border: 1px solid #b45000; }
   .query-block { margin-bottom: 14px; }
   .query-label { font-size: 12px; color: #555; margin-bottom: 4px; }
   .query-code { background: #1e1e1e; color: #d4d4d4; padding: 12px; font-size: 12px; line-height: 1.6; overflow-x: auto; border-left: 3px solid #111; }
-  .query-code .kw { color: #569cd6; }
-  .query-code .tbl { color: #4ec9b0; }
-  .query-code .val { color: #ce9178; }
   .coral-credit { margin-top: 40px; color: #aaa; font-size: 12px; border-top: 1px solid #eee; padding-top: 12px; }
+  .ops-insight { background: #fff8f0; border: 1px solid #e0a050; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.6; }
+  .ops-insight strong { color: #b45000; }
+  tr.ops-channel { background: #fff8f0; }
 </style>
 </head>
 <body>
 
 <h1>AI SRE Investigator</h1>
-<p class="tagline">Powered by Coral - query GitHub + Sentry + Slack as SQL. No ETL. No glue code.</p>
+<p class="tagline">Powered by Coral — query GitHub + Sentry + Slack as SQL. No ETL. No glue code.</p>
 
 <div class="form-row">
   <input id="owner" type="text" placeholder="GitHub owner" value="sudesh856" />
-  <input id="repo" type="text" placeholder="GitHub repo" value="sudesh856" />
+  <input id="repo" type="text" placeholder="GitHub repo" value="sre-demo-data" />
   <button id="btn" onclick="runInvestigation()">Investigate</button>
 </div>
 
@@ -67,14 +68,15 @@
   </div>
 
   <div class="section">
-    <div class="section-title">SLACK WORKSPACE CHANNELS</div>
+    <div class="section-title">SLACK — OPERATIONAL INTELLIGENCE</div>
+    <div id="slack-insight"></div>
     <div id="slack"></div>
   </div>
 
   <div class="section">
     <div class="section-title">CORAL SQL QUERIES (live queries powering this investigation)</div>
     <div class="query-block">
-      <div class="query-label">GitHub - recent pull requests</div>
+      <div class="query-label">GitHub — recent pull requests</div>
       <pre class="query-code">SELECT number, title, state, user__login, merged_at
 FROM github.pulls
 WHERE owner = '<span id="q-owner-1"></span>' AND repo = '<span id="q-repo-1"></span>'
@@ -82,21 +84,21 @@ WHERE owner = '<span id="q-owner-1"></span>' AND repo = '<span id="q-repo-1"></s
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Sentry - active errors</div>
+      <div class="query-label">Sentry — active errors</div>
       <pre class="query-code">SELECT id, title, status, first_seen, level
 FROM sentry.issues
 ORDER BY first_seen DESC
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Slack - workspace channels</div>
+      <div class="query-label">Slack — workspace channels</div>
       <pre class="query-code">SELECT id, name, purpose, num_members
 FROM slack.channels
 ORDER BY num_members DESC
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Cross-source JOIN - correlate deploys with errors (Coral's core power)</div>
+      <div class="query-label">Cross-source JOIN — correlate deploys with errors (Coral's core power)</div>
       <pre class="query-code">SELECT p.number, p.title, p.merged_at,
        s.title AS error_title, s.first_seen
 FROM github.pulls p
@@ -109,13 +111,34 @@ LIMIT 5</pre>
   </div>
 
   <div class="coral-credit">
-    Queries executed by Coral - one SQL interface over GitHub, Sentry, and Slack.
+    Queries executed by Coral — one SQL interface over GitHub, Sentry, and Slack.
     Built for Pirates of the Coral-bean hackathon by WeMakeDevs.
   </div>
 
 </div>
 
 <script>
+// SRE-relevant channel name patterns
+const OPS_CHANNELS = ['incident', 'alert', 'oncall', 'on-call', 'production', 'prod', 'sre', 'ops', 'outage', 'monitor', 'pager', 'deploy', 'release', 'critical', 'emergency'];
+
+function classifyChannels(channels) {
+  const operational = [];
+  const others = [];
+  for (const ch of channels) {
+    const name = (ch.channel || '').toLowerCase();
+    const isOps = OPS_CHANNELS.some(kw => name.includes(kw));
+    if (isOps) operational.push(ch);
+    else others.push(ch);
+  }
+  return { operational, others };
+}
+
+function buildSlackInsight(operational) {
+  if (operational.length === 0) return '';
+  const names = operational.map(c => '#' + esc(c.channel)).join(', ');
+  return `<div class="ops-insight"><strong>Operational channels detected:</strong> ${names}<br>Incident coordination likely occurs in these channels. During an active incident, check these first for real-time signals.</div>`;
+}
+
 async function runInvestigation() {
   const owner = document.getElementById('owner').value.trim();
   const repo = document.getElementById('repo').value.trim();
@@ -128,7 +151,6 @@ async function runInvestigation() {
     return;
   }
 
-  // Update query preview with actual owner/repo
   ['q-owner-1','q-owner-2'].forEach(id => document.getElementById(id).textContent = owner);
   ['q-repo-1','q-repo-2'].forEach(id => document.getElementById(id).textContent = repo);
 
@@ -182,21 +204,33 @@ async function runInvestigation() {
       errorsEl.innerHTML = html;
     }
 
-    // Slack channels table
+    // Slack — operational intelligence
     const slackEl = document.getElementById('slack');
+    const slackInsightEl = document.getElementById('slack-insight');
     if (!data.slack_alerts || data.slack_alerts.length === 0) {
+      slackInsightEl.innerHTML = '';
       slackEl.innerHTML = '<div class="empty">No Slack channels found.</div>';
     } else {
-      let html = '<table><tr><th>Channel</th><th>Purpose</th><th>Members</th></tr>';
+      const { operational, others } = classifyChannels(data.slack_alerts);
+
+      // Insight line
+      slackInsightEl.innerHTML = buildSlackInsight(operational);
+
+      // Table — operational channels highlighted
+      let html = '<table><tr><th>Channel</th><th>Type</th><th>Purpose</th><th>Members</th></tr>';
       for (const s of data.slack_alerts) {
+        const name = (s.channel || '').toLowerCase();
+        const isOps = OPS_CHANNELS.some(kw => name.includes(kw));
+        const rowClass = isOps ? ' class="ops-channel"' : '';
+        const badge = isOps ? '<span class="badge badge-ops">OPS</span>' : '<span class="badge badge-info">GENERAL</span>';
         const text = (s.text || '').length > 200 ? s.text.slice(0, 200) + '...' : (s.text || '');
-        html += `<tr><td>#${esc(s.channel)}</td><td>${esc(text)}</td><td>${esc(s.time)}</td></tr>`;
+        html += `<tr${rowClass}><td>#${esc(s.channel)}</td><td>${badge}</td><td>${esc(text)}</td><td>${esc(s.time)}</td></tr>`;
       }
       html += '</table>';
       slackEl.innerHTML = html;
     }
 
-    status.textContent = `Investigation complete - ${new Date().toLocaleTimeString()}`;
+    status.textContent = `Investigation complete — ${new Date().toLocaleTimeString()}`;
     results.style.display = 'block';
 
   } catch (err) {
