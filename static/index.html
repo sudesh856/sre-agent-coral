@@ -40,7 +40,7 @@
 <body>
 
 <h1>AI SRE Investigator</h1>
-<p class="tagline">Powered by Coral — query GitHub + Sentry + Slack as SQL. No ETL. No glue code.</p>
+<p class="tagline">Powered by Coral - query GitHub + Sentry + Slack as SQL. No ETL. No glue code.</p>
 
 <div class="form-row">
   <input id="owner" type="text" placeholder="GitHub owner" value="sudesh856" />
@@ -68,7 +68,7 @@
   </div>
 
   <div class="section">
-    <div class="section-title">SLACK — OPERATIONAL INTELLIGENCE</div>
+    <div class="section-title">SLACK - OPERATIONAL INTELLIGENCE</div>
     <div id="slack-insight"></div>
     <div id="slack"></div>
   </div>
@@ -76,7 +76,7 @@
   <div class="section">
     <div class="section-title">CORAL SQL QUERIES (live queries powering this investigation)</div>
     <div class="query-block">
-      <div class="query-label">GitHub — recent pull requests</div>
+      <div class="query-label">GitHub - recent pull requests</div>
       <pre class="query-code">SELECT number, title, state, user__login, merged_at
 FROM github.pulls
 WHERE owner = '<span id="q-owner-1"></span>' AND repo = '<span id="q-repo-1"></span>'
@@ -84,21 +84,21 @@ WHERE owner = '<span id="q-owner-1"></span>' AND repo = '<span id="q-repo-1"></s
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Sentry — active errors</div>
+      <div class="query-label">Sentry - active errors</div>
       <pre class="query-code">SELECT id, title, status, first_seen, level
 FROM sentry.issues
 ORDER BY first_seen DESC
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Slack — workspace channels</div>
+      <div class="query-label">Slack - workspace channels</div>
       <pre class="query-code">SELECT id, name, purpose, num_members
 FROM slack.channels
 ORDER BY num_members DESC
 LIMIT 10</pre>
     </div>
     <div class="query-block">
-      <div class="query-label">Cross-source JOIN — correlate deploys with errors (Coral's core power)</div>
+      <div class="query-label">Cross-source JOIN - correlate deploys with errors (Coral's core power)</div>
       <pre class="query-code">SELECT p.number, p.title, p.merged_at,
        s.title AS error_title, s.first_seen
 FROM github.pulls p
@@ -111,8 +111,9 @@ LIMIT 5</pre>
   </div>
 
   <div class="coral-credit">
-    Queries executed by Coral — one SQL interface over GitHub, Sentry, and Slack.
+    Queries executed by Coral - one SQL interface over GitHub, Sentry, and Slack.
     Built for Pirates of the Coral-bean hackathon by WeMakeDevs.
+    -Sudesh Subedi
   </div>
 
 </div>
@@ -204,7 +205,7 @@ async function runInvestigation() {
       errorsEl.innerHTML = html;
     }
 
-    // Slack — operational intelligence
+    // Slack - operational intelligence
     const slackEl = document.getElementById('slack');
     const slackInsightEl = document.getElementById('slack-insight');
     if (!data.slack_alerts || data.slack_alerts.length === 0) {
@@ -216,7 +217,7 @@ async function runInvestigation() {
       // Insight line
       slackInsightEl.innerHTML = buildSlackInsight(operational);
 
-      // Table — operational channels highlighted
+      // Table - operational channels highlighted
       let html = '<table><tr><th>Channel</th><th>Type</th><th>Purpose</th><th>Members</th></tr>';
       for (const s of data.slack_alerts) {
         const name = (s.channel || '').toLowerCase();
@@ -230,7 +231,7 @@ async function runInvestigation() {
       slackEl.innerHTML = html;
     }
 
-    status.textContent = `Investigation complete — ${new Date().toLocaleTimeString()}`;
+    status.textContent = `Investigation complete - ${new Date().toLocaleTimeString()}`;
     results.style.display = 'block';
 
   } catch (err) {
