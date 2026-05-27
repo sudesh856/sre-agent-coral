@@ -2,8 +2,6 @@
 
 Powered by [Coral](https://withcoral.com) - one SQL interface over GitHub, Sentry, and Slack.
 
->**Deployment Note:** The frontend dashboard UI is hosted live on Vercel for layout presentation: **[Live Dashboard Preview](https://zero-trust-operational-intelligence.vercel.app/)**. Because this AI investigator leverages the local Coral CLI engine to execute real-time data queries, the Go backend runs locally on infrastructure as demonstrated in the 3-minute video submission.
-
 ## What it does
 
 When a production incident fires, engineers waste hours jumping between GitHub, Sentry, and Slack to find the root cause. This agent queries all three in a single Coral SQL session and generates a plain-English root cause summary in seconds.
