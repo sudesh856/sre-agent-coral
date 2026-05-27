@@ -49,14 +49,13 @@ One query. Two external systems. Zero glue code.
 
 ## Run it
 
-```
 coral source add --interactive github
 coral source add --interactive sentry
 coral source add --interactive slack
 go run main.go
-```
 
-Open `http://localhost:8080`, enter a GitHub owner and repo, click Investigate.
+
+Open [http://localhost:8080](http://localhost:8080), enter a GitHub owner and repo, click Investigate
 
 ## Built for
 
